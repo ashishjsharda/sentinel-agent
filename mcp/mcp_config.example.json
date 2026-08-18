@@ -1,0 +1,19 @@
+{
+  "//": "Example MCP client config for connecting Claude Code / Cursor / VS Code",
+  "//_2": "directly to your CockroachDB Cloud cluster's Managed MCP Server.",
+  "//_3": "Copy the relevant block into your client's mcp.json / settings and",
+  "//_4": "fill in the values from CockroachDB Cloud Console -> your cluster -> 'MCP'.",
+
+  "mcpServers": {
+    "cockroachdb": {
+      "type": "http",
+      "url": "https://cockroachlabs.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer ${COCKROACHDB_MCP_API_KEY}",
+        "X-Cluster-Id": "${COCKROACHDB_MCP_CLUSTER_ID}"
+      },
+      "//_mode": "Managed MCP defaults to read-only mode with full audit logging.",
+      "//_usage": "During development we use this to let Claude Code inspect the live sentinel database directly -- e.g. 'show me the 5 most recent incidents and their embeddings distance from each other' -- without writing any custom proxy code, and with every query audit-logged by CockroachDB Cloud."
+    }
+  }
+}

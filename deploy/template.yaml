@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Sentinel Agent -- serverless DevOps agent with persistent memory in
+  CockroachDB. Lambda handles incident triage, Bedrock provides reasoning +
+  embeddings, S3 stores diagnosis reports.
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: CockroachDB connection string (postgresql://...)
+  BedrockReasoningModelId:
+    Type: String
+    Default: anthropic.claude-3-5-sonnet-20241022-v2:0
+  BedrockEmbeddingModelId:
+    Type: String
+    Default: amazon.titan-embed-text-v2:0
+  ArtifactBucketName:
+    Type: String
+    Default: sentinel-agent-artifacts
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ArtifactBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SentinelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: sentinel-agent
+      Handler: src.lambda_handler.handler
+      Runtime: python3.12
+      Timeout: 60
+      MemorySize: 512
+      CodeUri: ../
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          BEDROCK_REASONING_MODEL_ID: !Ref BedrockReasoningModelId
+          BEDROCK_EMBEDDING_MODEL_ID: !Ref BedrockEmbeddingModelId
+          SENTINEL_S3_BUCKET: !Ref ArtifactBucketName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ArtifactBucketName
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+
+Outputs:
+  FunctionArn:
+    Value: !GetAtt SentinelFunction.Arn
+  FunctionUrl:
+    Description: Invoke with a signed request (AWS_IAM auth), or front with API Gateway for public webhooks.
+    Value: !GetAtt SentinelFunctionUrl.FunctionUrl
